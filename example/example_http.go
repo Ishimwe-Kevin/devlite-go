@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Ishimwe-Kevin/devlite-app/devlite-go"
+	"github.com/Ishimwe-Kevin/devlite-go"
 )
 
 // example_http.go is the DevLite Go SDK hello-world: instrument a stdlib

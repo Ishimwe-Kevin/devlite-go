@@ -11,7 +11,7 @@ server and every framework built on it (chi, Echo, Gin, gorilla/mux, ...).
 ## Install
 
 ```
-go get github.com/Ishimwe-Kevin/devlite-app/devlite-go
+go get github.com/Ishimwe-Kevin/devlite-go
 ```
 
 ## Quickstart
@@ -23,7 +23,7 @@ import (
     "log"
     "net/http"
 
-    "github.com/Ishimwe-Kevin/devlite-app/devlite-go"
+    "github.com/Ishimwe-Kevin/devlite-go"
 )
 
 func main() {

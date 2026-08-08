@@ -1,3 +1,3 @@
-module github.com/Ishimwe-Kevin/devlite-app/devlite-go
+module github.com/Ishimwe-Kevin/devlite-go
 
 go 1.21
