@@ -93,10 +93,19 @@ var coherentTypes = map[string]bool{
 	"message": true, "metric": true, "log": true, "span": true,
 }
 
+// enqueue coherently drops sampled-out requests' events and inherits the
+// request's traceId on every event (deployments are not request-scoped).
 func (c *Client) enqueue(scope *Scope, event map[string]any) {
 	if t, ok := event["type"].(string); ok && coherentTypes[t] {
 		if scope != nil && scope.SampledOut() {
 			return
+		}
+	}
+	if t, ok := event["type"].(string); !ok || t != "deployment" {
+		if scope != nil && scope.TraceId() != "" {
+			if _, has := event["traceId"]; !has {
+				event["traceId"] = scope.TraceId()
+			}
 		}
 	}
 	c.transport.Enqueue(event)

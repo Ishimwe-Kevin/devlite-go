@@ -10,14 +10,15 @@ import (
 )
 
 // Scope is the request-scoped state: breadcrumbs, tags, the current user,
-// and the coherent-sampling decision. HTTP middleware creates one per
-// request; the manual API calls it "the current request".
+// the coherent-sampling decision, and the request's traceId. HTTP middleware
+// creates one per request; the manual API calls it "the current request".
 type Scope struct {
 	mu          sync.RWMutex
 	breadcrumbs []map[string]any
 	tags        map[string]any
 	user        map[string]any
 	sampled     *bool
+	traceId     string
 }
 
 func newScope() *Scope { return &Scope{} }
@@ -84,9 +85,29 @@ func (s *Scope) SampledOut() bool {
 	return s.sampled != nil && !*s.sampled
 }
 
-func (s *Scope) snapshot() (breadcrumbs []map[string]any, user map[string]any, tags map[string]any) {
+// SetTraceId scopes the request's traceId so captured events link to it.
+func (s *Scope) SetTraceId(traceId string) {
 	if s == nil {
-		return nil, nil, nil
+		return
+	}
+	s.mu.Lock()
+	s.traceId = traceId
+	s.mu.Unlock()
+}
+
+// TraceId returns the request's traceId, or "" outside a request.
+func (s *Scope) TraceId() string {
+	if s == nil {
+		return ""
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.traceId
+}
+
+func (s *Scope) snapshot() (breadcrumbs []map[string]any, user map[string]any, tags map[string]any, traceId string) {
+	if s == nil {
+		return nil, nil, nil, ""
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -110,7 +131,7 @@ func (s *Scope) snapshot() (breadcrumbs []map[string]any, user map[string]any, t
 			tags[k] = v
 		}
 	}
-	return breadcrumbs, user, tags
+	return breadcrumbs, user, tags, s.traceId
 }
 
 // --- goroutine-local ambient scope ----------------------------------------

@@ -176,6 +176,7 @@ func TestRequestEventsAndCoherentSampling(t *testing.T) {
 
 	events := s.drain()
 	var sawRequest, sawError bool
+	var reqTraceID, errTraceID string
 	for _, ev := range events {
 		switch ev["type"] {
 		case "request":
@@ -186,15 +187,23 @@ func TestRequestEventsAndCoherentSampling(t *testing.T) {
 			if ev["durationMs"].(float64) < 0 {
 				t.Fatalf("bad durationMs")
 			}
+			reqTraceID, _ = ev["traceId"].(string)
 		case "error":
 			sawError = true
 			if ev["user"] != nil {
 				t.Fatalf("no user set, got %v", ev["user"])
 			}
+			errTraceID, _ = ev["traceId"].(string)
 		}
 	}
 	if !sawRequest || !sawError {
 		t.Fatalf("want request+error, got %v", events)
+	}
+	if len(reqTraceID) != 16 {
+		t.Fatalf("request traceId = %q, want 16 hex chars", reqTraceID)
+	}
+	if reqTraceID != errTraceID {
+		t.Fatalf("request traceId %q != error traceId %q — tracing broken", reqTraceID, errTraceID)
 	}
 
 	// sampled out -> request AND error dropped together

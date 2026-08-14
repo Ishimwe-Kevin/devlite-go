@@ -86,6 +86,7 @@ func (c *Client) Middleware(next http.Handler) http.Handler {
 // (Gin/Echo): call it inside your middleware.
 func (c *Client) ServeHTTPScope(w http.ResponseWriter, r *http.Request, next func(rw http.ResponseWriter, r *http.Request)) {
 	scope := newScope()
+	scope.SetTraceId(newHex(8))
 	setAmbient(scope)
 	defer setAmbient(nil)
 
@@ -124,7 +125,7 @@ func (c *Client) ServeHTTPScope(w http.ResponseWriter, r *http.Request, next fun
 
 	scope.AddBreadcrumb(map[string]any{
 		"type": "request", "method": method, "path": path,
-		"statusCode": status, "durationMs": durationMs,
+		"statusCode": status, "durationMs": durationMs, "traceId": scope.TraceId(),
 	})
 
 	var headers map[string]any

@@ -168,7 +168,7 @@ func buildErrorEvent(cfg Config, err error, scope *Scope, extra map[string]any, 
 		stack = captureStack(4)
 	}
 
-	breadcrumbs, user, tags := scope.snapshot()
+	breadcrumbs, user, tags, _ := scope.snapshot()
 	extra = cloneMap(extra)
 	for k, v := range tags {
 		extra[k] = v
@@ -204,7 +204,7 @@ func buildErrorEvent(cfg Config, err error, scope *Scope, extra map[string]any, 
 func buildPanicEvent(cfg Config, value any, scope *Scope) map[string]any {
 	message := fmt.Sprintf("%v", value)
 	stack := panicStack()
-	breadcrumbs, user, _ := scope.snapshot()
+	breadcrumbs, user, _, _ := scope.snapshot()
 	fingerprint := computeFingerprint("panic", message, stack, "")
 
 	event := map[string]any{

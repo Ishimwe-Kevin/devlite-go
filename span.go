@@ -30,14 +30,21 @@ func newHex(n int) string {
 	return hex.EncodeToString(buf)
 }
 
-// StartSpan begins a new trace span bound to the ambient scope.
+// StartSpan begins a new trace span bound to the ambient scope. Spans created
+// inside a request inherit its traceId; standalone spans generate their own,
+// so auto-captured requests and their spans share one.
 func (c *Client) StartSpan(name string, tags map[string]any) *Span {
+	sc := c.resolveScope(nil)
+	traceID := sc.TraceId()
+	if traceID == "" {
+		traceID = newHex(8)
+	}
 	return &Span{
 		client:    c,
-		scope:     c.resolveScope(nil),
+		scope:     sc,
 		name:      name,
 		ID:        newHex(6),
-		TraceID:   newHex(8),
+		TraceID:   traceID,
 		Tags:      tags,
 		startTime: nowMs(),
 	}
