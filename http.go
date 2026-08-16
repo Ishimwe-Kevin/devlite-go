@@ -13,10 +13,17 @@ import (
 
 var (
 	sampleMu    sync.Mutex
-	sampleCount int64
+	sampleAccum float64
 )
 
 // sampleDecision returns the coherent-sampling decision for a request.
+//
+// Uses a Bresenham-style running accumulator instead of a counter+modulo
+// scheme: every call adds `rate` to a shared accumulator and fires "keep"
+// whenever the accumulator crosses 1.0, subtracting 1.0 afterward. This
+// keeps almost exactly N*rate requests for any rate in (0,1), evenly
+// spaced. (The old `every := int64(1.0/rate); n%every == 0` collapsed for
+// any rate > 0.5 — 1.0/rate truncates to 1, so every request was kept.)
 func sampleDecision(rate float64) bool {
 	if rate <= 0 {
 		return false
@@ -25,11 +32,13 @@ func sampleDecision(rate float64) bool {
 		return true
 	}
 	sampleMu.Lock()
-	sampleCount++
-	n := sampleCount
+	sampleAccum += rate
+	keep := sampleAccum >= 1.0
+	if keep {
+		sampleAccum -= 1.0
+	}
 	sampleMu.Unlock()
-	every := int64(1.0 / rate)
-	return n%every == 0
+	return keep
 }
 
 // statusRecorder captures the response status code.

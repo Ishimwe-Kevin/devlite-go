@@ -101,10 +101,16 @@ func scrubDeep(value any, depth int) any {
 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 			reflect.Float32, reflect.Float64:
 			return value
-		case reflect.Slice, reflect.Array:
+		case reflect.Slice:
 			if rv.IsNil() {
 				return nil
 			}
+			out := make([]any, rv.Len())
+			for i := 0; i < rv.Len(); i++ {
+				out[i] = scrubDeep(rv.Index(i).Interface(), depth+1)
+			}
+			return out
+		case reflect.Array:
 			out := make([]any, rv.Len())
 			for i := 0; i < rv.Len(); i++ {
 				out[i] = scrubDeep(rv.Index(i).Interface(), depth+1)
