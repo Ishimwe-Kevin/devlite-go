@@ -1,6 +1,6 @@
 # DevLite Go SDK
 
-Official Go SDK for [DevLite](https://devlite.andasy.dev) — AI-powered
+Official Go SDK for [DevLite](https://monitoring-devlite.andasy.dev) — AI-powered
 observability. Mirror of the `@devlite/nodejs` (npm) and `devlite` (PyPI)
 SDKs: add two lines, get automatic request tracking, error capture, error
 grouping, source context, user tracking, and slow-endpoint detection.
@@ -50,7 +50,7 @@ func main() {
 That's it. Every request gets tracked (method, path, status, duration),
 panics are captured without being swallowed, and `SetUser` / breadcrumbs
 attach to the request's error events. The User-Agent is always
-`devlite-go/0.1.0` so the WAF never blocks telemetry.
+`devlite-go/0.1.4` so the WAF never blocks telemetry.
 
 ## Manual API
 
@@ -106,7 +106,7 @@ and `DEVLITE_RELEASE` from the environment and starts from safe defaults
 | `WithRequestTimeoutMs` | `10000` | |
 | `WithCaptureSourceContext` | `true` | surrounding source lines on errors |
 | `WithScrubSensitiveData` | `true` | emails, tokens, credit cards auto-redacted |
-| `WithUserAgent` | `devlite-go/0.1.0` | |
+| `WithUserAgent` | `devlite-go/0.1.4` | |
 | `WithOnError` | — | callback for SDK send failures |
 
 ## Frameworks

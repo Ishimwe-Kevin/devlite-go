@@ -15,8 +15,8 @@ import (
 
 const (
 	// DefaultEndpoint is the production DevLite ingest API.
-	DefaultEndpoint  = "https://devlite.andasy.dev/v1/events"
-	defaultUserAgent = "devlite-go/0.1.0"
+	DefaultEndpoint  = "https://monitoring-devlite.andasy.dev/v1/events"
+	defaultUserAgent = "devlite-go/0.1.4"
 
 	maxBreadcrumbs         = 20
 	slowRequestThresholdMs = 1000
