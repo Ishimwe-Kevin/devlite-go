@@ -16,7 +16,7 @@ import (
 const (
 	// DefaultEndpoint is the production DevLite ingest API.
 	DefaultEndpoint  = "https://monitoring-devlite.andasy.dev/v1/events"
-	defaultUserAgent = "devlite-go/0.1.4"
+	defaultUserAgent = "devlite-go/0.1.5"
 
 	maxBreadcrumbs         = 20
 	slowRequestThresholdMs = 1000
@@ -46,6 +46,7 @@ type Config struct {
 	ScrubSensitiveData   bool
 	UserAgent            string
 	OnError              func(error)
+	BeforeSend           func(event map[string]any) map[string]any
 }
 
 func defaultConfig() Config {
@@ -164,3 +165,10 @@ func WithUserAgent(ua string) Option { return func(c *Config) { c.UserAgent = ua
 
 // WithOnError registers a callback for SDK-internal send failures.
 func WithOnError(fn func(error)) Option { return func(c *Config) { c.OnError = fn } }
+
+// WithBeforeSend registers a Sentry-compatible event hook. It runs right
+// before enqueue on EVERY event; return the (possibly mutated) event to
+// keep it, or nil to drop it. A panicking hook drops the event.
+func WithBeforeSend(fn func(event map[string]any) map[string]any) Option {
+	return func(c *Config) { c.BeforeSend = fn }
+}

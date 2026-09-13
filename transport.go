@@ -44,10 +44,25 @@ func (t *Transport) Enqueue(event map[string]any) {
 		return
 	}
 	t.mu.Unlock()
+	if t.cfg.BeforeSend != nil {
+		event = safeBeforeSend(t.cfg.BeforeSend, event)
+		if event == nil {
+			return
+		}
+	}
 	t.queue.Push(event)
 	if t.queue.Size() >= t.cfg.MaxBatchSize {
 		t.Flush()
 	}
+}
+
+func safeBeforeSend(fn func(map[string]any) map[string]any, event map[string]any) map[string]any {
+	defer func() {
+		if recover() != nil {
+			event = nil // a panicking hook drops the event, never crashes the host
+		}
+	}()
+	return fn(event)
 }
 
 func (t *Transport) Flush() {

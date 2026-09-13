@@ -95,15 +95,24 @@ func (c *Client) Middleware(next http.Handler) http.Handler {
 // (Gin/Echo): call it inside your middleware.
 func (c *Client) ServeHTTPScope(w http.ResponseWriter, r *http.Request, next func(rw http.ResponseWriter, r *http.Request)) {
 	scope := newScope()
-	scope.SetTraceId(newHex(8))
 	setAmbient(scope)
 	defer setAmbient(nil)
+
+	// Distributed tracing: a W3C traceparent header (e.g. from a DevLite Node
+	// service) continues the caller's trace — same traceId, this request
+	// parents into their span. Otherwise start a fresh trace.
+	if traceId, parentId, sampled, ok := ParseTraceparent(r.Header.Get("traceparent")); ok {
+		scope.SetTraceId(traceId)
+		scope.SetParentID(parentId)
+		scope.SetSampled(sampled)
+	} else {
+		scope.SetTraceId(newHex(8))
+		scope.SetSampled(sampleDecision(c.cfg.SampleRate))
+	}
 
 	// Thread the scope through the request context so spawned goroutines and
 	// Ctx-variants (SetUserCtx, CaptureErrorCtx) keep tagging this request.
 	r = r.WithContext(WithScope(r.Context(), scope))
-
-	scope.SetSampled(sampleDecision(c.cfg.SampleRate))
 
 	start := nowMs()
 	rw := &statusRecorder{ResponseWriter: w}
@@ -131,6 +140,10 @@ func (c *Client) ServeHTTPScope(w http.ResponseWriter, r *http.Request, next fun
 	durationMs := nowMs() - start
 	method := r.Method
 	path := r.URL.Path
+	// The request IS the root span of its trace: give it the same span id
+	// Node/Python/Java use (id === spanId) so child spans can attach to it in
+	// the dashboard waterfall and the trace view groups by this id.
+	spanId := newHex(8)
 
 	scope.AddBreadcrumb(map[string]any{
 		"type": "request", "method": method, "path": path,
@@ -142,16 +155,24 @@ func (c *Client) ServeHTTPScope(w http.ResponseWriter, r *http.Request, next fun
 		headers = c.captureHeaders(r)
 	}
 
-	c.enqueue(scope, map[string]any{
-		"type": "request", "method": method, "path": path,
+	req := map[string]any{
+		"type": "request", "id": spanId, "spanId": spanId, "method": method, "path": path,
 		"statusCode": status, "durationMs": durationMs,
-		"headers": headers, "timestamp": start,
-	})
+		"headers": headers, "traceId": scope.TraceId(), "timestamp": start,
+	}
+	if parentId := scope.ParentID(); parentId != "" {
+		req["parentId"] = parentId
+	}
+	c.enqueue(scope, req)
 	if durationMs > slowRequestThresholdMs {
-		c.enqueue(scope, map[string]any{
-			"type": "slow_request", "method": method, "path": path,
-			"durationMs": durationMs, "timestamp": start,
-		})
+		sr := map[string]any{
+			"type": "slow_request", "id": spanId, "spanId": spanId, "method": method, "path": path,
+			"durationMs": durationMs, "traceId": scope.TraceId(), "timestamp": start,
+		}
+		if parentId := scope.ParentID(); parentId != "" {
+			sr["parentId"] = parentId
+		}
+		c.enqueue(scope, sr)
 	}
 }
 

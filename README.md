@@ -50,7 +50,32 @@ func main() {
 That's it. Every request gets tracked (method, path, status, duration),
 panics are captured without being swallowed, and `SetUser` / breadcrumbs
 attach to the request's error events. The User-Agent is always
-`devlite-go/0.1.4` so the WAF never blocks telemetry.
+`devlite-go/0.1.5` so the WAF never blocks telemetry.
+
+## Distributed tracing — inbound, zero config
+
+The Go middleware **continues** an incoming W3C `traceparent` header automatically (the header
+the Node SDK injects on every outbound call, or any OpenTelemetry-compatible caller). Your
+request adopts the caller's `traceId`, parents into their span (`parentId`), and honors their
+sampling bit — so a request that crosses services shows up as **one linked span tree** in the
+dashboard, not a set of orphaned events.
+
+```text
+Node service ──traceparent──▶ Go service
+      (injects W3C header)      (middleware continues: same traceId, parentId, sampled)
+```
+
+For outbound calls from a handler, ask the request's scope for a header that continues the trace:
+
+```go
+if scope := devlite.ScopeFromContext(r.Context()); scope != nil {
+    nextReq.Header.Set("traceparent", scope.Traceparent())
+}
+```
+
+`Scope.Traceparent()` returns a W3C header only when the current trace is W3C-form, and `""`
+otherwise, so internal traces stay internal. (The Node SDK also auto-injects the header on
+every outbound `http`/`fetch` call — Go leaves the header on your outbound client by design.)
 
 ## Manual API
 
@@ -79,6 +104,10 @@ devlite.ReportDeployment("1.4.2", "a1b2c3", "ship faster")
 span := devlite.StartSpan("render-invoice", map[string]any{"invoice": "i-7"})
 // ... work ...
 span.End("ok")
+
+// Tag the current scope — tags merge into each error's `extra`
+devlite.SetTag("region", "lagos")
+devlite.SetTag("deploy", "canary")
 ```
 
 ## Configuration
@@ -106,7 +135,9 @@ and `DEVLITE_RELEASE` from the environment and starts from safe defaults
 | `WithRequestTimeoutMs` | `10000` | |
 | `WithCaptureSourceContext` | `true` | surrounding source lines on errors |
 | `WithScrubSensitiveData` | `true` | emails, tokens, credit cards auto-redacted |
-| `WithUserAgent` | `devlite-go/0.1.4` | |
+| `WithBeforeSend` | — | `func(event map[string]any) map[string]any` — mutate to enrich, return `nil` to drop. Runs on EVERY event right before enqueue; a panicking hook drops the event |
+| `WithUserAgent` | `devlite-go/0.1.5` | |
+| `WithDebug` | `false` | log SDK internals |
 | `WithOnError` | — | callback for SDK send failures |
 
 ## Frameworks

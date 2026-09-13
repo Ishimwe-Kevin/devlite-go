@@ -19,6 +19,7 @@ type Scope struct {
 	user        map[string]any
 	sampled     *bool
 	traceId     string
+	parentId    string
 }
 
 func newScope() *Scope { return &Scope{} }
@@ -103,6 +104,27 @@ func (s *Scope) TraceId() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.traceId
+}
+
+// SetParentID records the incoming span this request continues (from a W3C
+// traceparent header).
+func (s *Scope) SetParentID(parentId string) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	s.parentId = parentId
+	s.mu.Unlock()
+}
+
+// ParentID returns the incoming parent span id, or "" for root requests.
+func (s *Scope) ParentID() string {
+	if s == nil {
+		return ""
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.parentId
 }
 
 func (s *Scope) snapshot() (breadcrumbs []map[string]any, user map[string]any, tags map[string]any, traceId string) {
